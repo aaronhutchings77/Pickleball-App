@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pickleball Stats Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --card-bg: #ffffff;
+      --text: #111111;
+      --muted: #666666;
+      --accent: #007aff;
+      --accent-soft: #e5f1ff;
+      --error: #ff3b30;
+      --success: #34c759;
+      --shadow: 0 2px 10px rgba(0,0,0,0.12);
+      --border-radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    header {
+      padding: 8px 12px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 2px;
+    }
+
+    header .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .top-controls {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px;
+    }
+
+    .btn {
+      flex: 1;
+      border-radius: 999px;
+      border: none;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger { background: #fff; color: var(--error); border: 1px solid rgba(0,0,0,0.08); }
+    .btn-ghost { background: #fff; color: var(--muted); border: 1px solid rgba(0,0,0,0.08); box-shadow: none; }
+
+    .game-selector {
+      padding: 4px 8px 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .game-chips {
+      display: flex;
+      gap: 6px;
+      padding-bottom: 4px;
+    }
+
+    .game-chip {
+      min-width: 64px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fff;
+      color: var(--muted);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .game-chip.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .game-chip span {
+      font-size: 10px;
+      opacity: 0.8;
+      margin-left: 4px;
+    }
+
+    .players-card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 8px 10px;
+      margin: 0 8px;
+      font-size: 11px;
+    }
+
+    .players-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .players-row:last-child { margin-bottom: 0; }
+
+    .players-label {
+      width: 48px;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .player-input {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.15);
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .court {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 0 8px 4px;
+    }
+
+    .team-card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .team-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .team-name { font-size: 16px; font-weight: 700; }
+
+    .team-total-errors {
+      font-size: 12px;
+      color: var(--error);
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .tagline {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .player-toggle {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .player-pill {
+      flex: 1;
+      font-size: 10px;
+      padding: 4px 0;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: #fff;
+      color: var(--muted);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .player-pill.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 2px 0;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .stat-btn {
+      border-radius: 12px;
+      border: none;
+      padding: 10px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      line-height: 1.2;
+      min-height: 52px;
+    }
+
+    .stat-btn-label { margin-bottom: 2px; }
+    .stat-btn-count { font-size: 16px; font-weight: 700; }
+    .stat-btn-error { background: var(--error); color: #fff; }
+    .stat-btn-nonerror { background: #fff; color: var(--accent); border: 1px solid rgba(0,0,0,0.08); }
+    .stat-btn-nonerror .stat-btn-count { color: var(--accent); }
+    .stat-btn:active { transform: scale(0.97); }
+
+    .team-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .team-footer strong { color: var(--text); font-size: 11px; }
+
+    .player-errors { font-size: 10px; color: var(--muted); }
+
+    .rally-card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 8px 10px;
+      margin: 0 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .rally-top-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rally-count {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .rally-label {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .rally-buttons {
+      display: flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .rally-btn-main,
+    .rally-btn-save {
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 10px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .rally-btn-main {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .rally-btn-save {
+      background: var(--accent-soft);
+      color: var(--accent);
+      box-shadow: none;
+      border: 1px solid rgba(0,0,0,0.05);
+      padding-inline: 8px;
+    }
+
+    .rally-stats-line {
+      font-size: 11px;
+    }
+
+    .rally-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .rally-chip {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #f2f2f2;
+      font-size: 10px;
+    }
+
+    .charts {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 8px 8px;
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 8px;
+    }
+
+    .chart-title { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+    .chart-subtitle { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+
+    canvas {
+      width: 100% !important;
+      height: 180px !important;
+    }
+
+    .history-card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 8px;
+      margin: 0 8px 4px;
+      font-size: 11px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .history-title-main { font-weight: 600; }
+    .history-count { color: var(--muted); font-size: 10px; }
+    .history-list { display: flex; flex-direction: column; gap: 4px; }
+
+    .history-item {
+      padding: 4px 6px;
+      border-radius: 10px;
+      background: #f8f8f8;
+    }
+
+    .history-title { font-weight: 600; font-size: 11px; margin-bottom: 2px; }
+    .history-meta { font-size: 10px; color: var(--muted); margin-bottom: 1px; }
+    .history-errors { font-size: 10px; }
+    .history-empty { font-size: 10px; color: var(--muted); font-style: italic; }
+
+    .bottom-controls {
+      padding: 0 8px 4px;
+      display: flex;
+      gap: 8px;
+    }
+
+    @media (max-width: 375px) {
+      canvas { height: 160px !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Pickleball Stats</h1>
+      <div class="subtitle">Teams & 4 players · Rally tracking</div>
+    </header>
+
+    <div class="top-controls">
+      <button class="btn btn-ghost" id="undoBtn">↩ Undo (Game)</button>
+      <button class="btn btn-danger" id="resetCurrentBtn">Reset Current</button>
+      <button class="btn btn-primary" id="resetAllBtn">Reset All</button>
+    </div>
+
+    <div class="game-selector">
+      <div class="game-chips" id="gameChips"></div>
+    </div>
+
+    <div class="players-card">
+      <div class="players-row">
+        <div class="players-label">Team A</div>
+        <input class="player-input" data-name-input="A-p1" placeholder="Player A1" />
+        <input class="player-input" data-name-input="A-p2" placeholder="Player A2" />
+      </div>
+      <div class="players-row">
+        <div class="players-label">Team B</div>
+        <input class="player-input" data-name-input="B-p1" placeholder="Player B1" />
+        <input class="player-input" data-name-input="B-p2" placeholder="Player B2" />
+      </div>
+    </div>
+
+    <div class="court">
+      <!-- Team A -->
+      <div class="team-card" data-team="A">
+        <div class="team-header">
+          <div>
+            <div class="team-name">Team A</div>
+            <div class="tagline">Left side / Near baseline</div>
+            <div class="player-toggle">
+              <button type="button" class="player-pill active" data-team="A" data-player="p1">
+                <span data-player-label="A-p1">A1</span>
+              </button>
+              <button type="button" class="player-pill" data-team="A" data-player="p2">
+                <span data-player-label="A-p2">A2</span>
+              </button>
+            </div>
+          </div>
+          <div class="team-total-errors">
+            Errors: <span data-total-errors="A">0</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Errors</div>
+          <div class="button-grid">
+            <button class="stat-btn stat-btn-error" data-team="A" data-type="error" data-key="service">
+              <span class="stat-btn-label">Service</span>
+              <span class="stat-btn-count" data-count="A-service">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="A" data-type="error" data-key="return">
+              <span class="stat-btn-label">Return</span>
+              <span class="stat-btn-count" data-count="A-return">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="A" data-type="error" data-key="net">
+              <span class="stat-btn-label">Net</span>
+              <span class="stat-btn-count" data-count="A-net">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="A" data-type="error" data-key="wide">
+              <span class="stat-btn-label">Wide</span>
+              <span class="stat-btn-count" data-count="A-wide">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="A" data-type="error" data-key="long">
+              <span class="stat-btn-label">Long</span>
+              <span class="stat-btn-count" data-count="A-long">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="A" data-type="error" data-key="high">
+              <span class="stat-btn-label">High</span>
+              <span class="stat-btn-count" data-count="A-high">0</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Non-Errors</div>
+          <div class="button-grid">
+            <button class="stat-btn stat-btn-nonerror" data-team="A" data-type="nonerror" data-key="dinks">
+              <span class="stat-btn-label">Dinks</span>
+              <span class="stat-btn-count" data-count="A-dinks">0</span>
+            </button>
+            <button class="stat-btn stat-btn-nonerror" data-team="A" data-type="nonerror" data-key="highRecoveries">
+              <span class="stat-btn-label">High Recov.</span>
+              <span class="stat-btn-count" data-count="A-highRecoveries">0</span>
+            </button>
+            <button class="stat-btn stat-btn-nonerror" data-team="A" data-type="nonerror" data-key="outBalls">
+              <span class="stat-btn-label">Out Balls</span>
+              <span class="stat-btn-count" data-count="A-outBalls">0</span>
+            </button>
+            <button class="stat-btn stat-btn-nonerror" data-team="A" data-type="nonerror" data-key="winners">
+              <span class="stat-btn-label">Winners</span>
+              <span class="stat-btn-count" data-count="A-winners">0</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="team-footer">
+          <div>
+            Err%: <strong data-err-breakdown="A">—</strong><br />
+            <span class="player-errors" data-player-errors="A">A1: 0 · A2: 0</span>
+          </div>
+          <div>Game <span id="currentGameLabelA">1</span></div>
+        </div>
+      </div>
+
+      <!-- Team B -->
+      <div class="team-card" data-team="B">
+        <div class="team-header">
+          <div>
+            <div class="team-name">Team B</div>
+            <div class="tagline">Right side / Far baseline</div>
+            <div class="player-toggle">
+              <button type="button" class="player-pill active" data-team="B" data-player="p1">
+                <span data-player-label="B-p1">B1</span>
+              </button>
+              <button type="button" class="player-pill" data-team="B" data-player="p2">
+                <span data-player-label="B-p2">B2</span>
+              </button>
+            </div>
+          </div>
+          <div class="team-total-errors">
+            Errors: <span data-total-errors="B">0</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Errors</div>
+          <div class="button-grid">
+            <button class="stat-btn stat-btn-error" data-team="B" data-type="error" data-key="service">
+              <span class="stat-btn-label">Service</span>
+              <span class="stat-btn-count" data-count="B-service">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="B" data-type="error" data-key="return">
+              <span class="stat-btn-label">Return</span>
+              <span class="stat-btn-count" data-count="B-return">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="B" data-type="error" data-key="net">
+              <span class="stat-btn-label">Net</span>
+              <span class="stat-btn-count" data-count="B-net">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="B" data-type="error" data-key="wide">
+              <span class="stat-btn-label">Wide</span>
+              <span class="stat-btn-count" data-count="B-wide">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="B" data-type="error" data-key="long">
+              <span class="stat-btn-label">Long</span>
+              <span class="stat-btn-count" data-count="B-long">0</span>
+            </button>
+            <button class="stat-btn stat-btn-error" data-team="B" data-type="error" data-key="high">
+              <span class="stat-btn-label">High</span>
+              <span class="stat-btn-count" data-count="B-high">0</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Non-Errors</div>
+          <div class="button-grid">
+            <button class="stat-btn stat-btn-nonerror" data-team="B" data-type="nonerror" data-key="dinks">
+              <span class="stat-btn-label">Dinks</span>
+              <span class="stat-btn-count" data-count="B-dinks">0</span>
+            </button>
+            <button class="stat-btn stat-btn-nonerror" data-team="B" data-type="nonerror" data-key="highRecoveries">
+              <span class="stat-btn-label">High Recov.</span>
+              <span class="stat-btn-count" data-count="B-highRecoveries">0</span>
+            </button>
+            <button class="stat-btn stat-btn-nonerror" data-team="B" data-type="nonerror" data-key="outBalls">
+              <span class="stat-btn-label">Out Balls</span>
+              <span class="stat-btn-count" data-count="B-outBalls">0</span>
+            </button>
+            <button class="stat-btn stat-btn-nonerror" data-team="B" data-type="nonerror" data-key="winners">
+              <span class="stat-btn-label">Winners</span>
+              <span class="stat-btn-count" data-count="B-winners">0</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="team-footer">
+          <div>
+            Err%: <strong data-err-breakdown="B">—</strong><br />
+            <span class="player-errors" data-player-errors="B">B1: 0 · B2: 0</span>
+          </div>
+          <div>Game <span id="currentGameLabelB">1</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rally tracker -->
+    <div class="rally-card">
+      <div class="rally-top-row">
+        <div>
+          <div class="rally-count" id="rallyCount">0</div>
+          <div class="rally-label">Hits in current rally (this point)</div>
+        </div>
+        <div class="rally-buttons">
+          <button class="rally-btn-main" id="rallyAddBtn">+ Rally Hit</button>
+          <button class="rally-btn-save" id="rallySaveBtn">Save Point</button>
+        </div>
+      </div>
+      <div class="rally-stats-line" id="rallyStatsLine">
+        Points tracked: 0 · Avg rally: — hits
+      </div>
+      <div class="rally-list" id="rallyList"></div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <div class="chart-title">Current Game Error Breakdown</div>
+        <div class="chart-subtitle">Percent of total errors by category · Team A vs Team B</div>
+        <canvas id="errorBreakdownChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Per-Game Total Errors</div>
+        <div class="chart-subtitle">Total errors per team per game · Trend across games</div>
+        <canvas id="perGameChart"></canvas>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="history-header">
+        <div class="history-title-main">Match History</div>
+        <div class="history-count"><span id="historyCount">0</span> saved</div>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <div class="bottom-controls">
+      <button class="btn btn-primary" id="saveMatchBtn">💾 Save Match</button>
+      <button class="btn btn-ghost" id="shareLastBtn">📤 Share Summary</button>
+      <button class="btn btn-ghost" id="addGameBtn">➕ Add Game</button>
+    </div>
+  </div>
+
+  <script>
+    // ----- CONFIG -----
+    const errorKeys = ["service", "return", "net", "wide", "long", "high"];
+    const nonErrorKeys = ["dinks", "highRecoveries", "outBalls", "winners"];
+
+    const SESSION_KEY = "pb_session_v3";
+    const MATCHES_KEY = "pb_matches_v3";
+    const SESSION_VERSION = 3;
+    const MATCHES_VERSION = 3;
+
+    let playerNames = {
+      A: { p1: "A1", p2: "A2" },
+      B: { p1: "B1", p2: "B2" }
+    };
+
+    function createBaseCounters() {
+      const base = {};
+      [...errorKeys, ...nonErrorKeys].forEach(k => base[k] = 0);
+      return base;
+    }
+
+    function createEmptyStats() {
+      const base = createBaseCounters();
+      return {
+        teamA: { p1: { ...base }, p2: { ...base } },
+        teamB: { p1: { ...base }, p2: { ...base } }
+      };
+    }
+
+    function createEmptyGame(index) {
+      return {
+        id: index + 1,
+        label: `G${index + 1}`,
+        stats: createEmptyStats(),
+        history: [], // {team, player, key, type, rallyHits?}
+        rallies: [], // {hits, team, player}
+        currentRally: 0
+      };
+    }
+
+    // ----- STATE -----
+    let games = [];
+    let currentGameIndex = 0;
+    let matches = [];
+    let activePlayer = { A: "p1", B: "p1" };
+
+    function sumErrorsForPlayer(playerStats) {
+      return errorKeys.reduce((sum, key) => sum + (playerStats[key] || 0), 0);
+    }
+
+    function sumErrorsForTeam(teamStats) {
+      return sumErrorsForPlayer(teamStats.p1) + sumErrorsForPlayer(teamStats.p2);
+    }
+
+    function sumErrorsForGameArray(gameArray, team) {
+      return gameArray.reduce((acc, g) => {
+        const stats = team === "A" ? g.stats.teamA : g.stats.teamB;
+        return acc + sumErrorsForTeam(stats);
+      }, 0);
+    }
+
+    function getTopErrorInfoForTeam(teamStats) {
+      const total = sumErrorsForTeam(teamStats);
+      if (!total) return null;
+
+      let topKey = null;
+      let topVal = -1;
+      errorKeys.forEach(k => {
+        const v = (teamStats.p1[k] || 0) + (teamStats.p2[k] || 0);
+        if (v > topVal) {
+          topVal = v;
+          topKey = k;
+        }
+      });
+
+      const labelMap = {
+        service: "Service",
+        return: "Return",
+        net: "Net",
+        wide: "Wide",
+        long: "Long",
+        high: "High"
+      };
+
+      return {
+        key: topKey,
+        label: labelMap[topKey] || topKey,
+        count: topVal,
+        pct: Math.round((topVal / total) * 100)
+      };
+    }
+
+    function initState() {
+      games = [createEmptyGame(0), createEmptyGame(1), createEmptyGame(2)];
+      currentGameIndex = 0;
+      matches = [];
+      activePlayer = { A: "p1", B: "p1" };
+
+      try {
+        const rawSession = localStorage.getItem(SESSION_KEY);
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          if (parsed.version === SESSION_VERSION &&
+              Array.isArray(parsed.games) &&
+              parsed.games.length > 0) {
+            games = parsed.games;
+            currentGameIndex = parsed.currentGameIndex || 0;
+            if (currentGameIndex < 0 || currentGameIndex >= games.length) currentGameIndex = 0;
+            if (parsed.activePlayer) {
+              activePlayer.A = parsed.activePlayer.A || "p1";
+              activePlayer.B = parsed.activePlayer.B || "p1";
+            }
+            if (parsed.playerNames) {
+              playerNames = parsed.playerNames;
+            }
+          }
+        }
+        const rawMatches = localStorage.getItem(MATCHES_KEY);
+        if (rawMatches) {
+          const parsedM = JSON.parse(rawMatches);
+          if (parsedM.version === MATCHES_VERSION && Array.isArray(parsedM.items)) {
+            matches = parsedM.items;
+          }
+        }
+      } catch (e) {
+        console.warn("Persistence not available", e);
+      }
+    }
+
+    function saveSessionState() {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({
+          version: SESSION_VERSION,
+          games,
+          currentGameIndex,
+          activePlayer,
+          playerNames
+        }));
+      } catch (e) {
+        console.warn("Unable to save session", e);
+      }
+    }
+
+    function saveMatches() {
+      try {
+        localStorage.setItem(MATCHES_KEY, JSON.stringify({
+          version: MATCHES_VERSION,
+          items: matches
+        }));
+      } catch (e) {
+        console.warn("Unable to save matches", e);
+      }
+    }
+
+    initState();
+
+    // ----- DOM -----
+    const gameChipsContainer = document.getElementById("gameChips");
+    const undoBtn = document.getElementById("undoBtn");
+    const resetAllBtn = document.getElementById("resetAllBtn");
+    const resetCurrentBtn = document.getElementById("resetCurrentBtn");
+    const addGameBtn = document.getElementById("addGameBtn");
+    const saveMatchBtn = document.getElementById("saveMatchBtn");
+    const shareLastBtn = document.getElementById("shareLastBtn");
+    const currentGameLabelA = document.getElementById("currentGameLabelA");
+    const currentGameLabelB = document.getElementById("currentGameLabelB");
+    const historyList = document.getElementById("historyList");
+    const historyCountSpan = document.getElementById("historyCount");
+
+    const totalErrorsEls = {
+      A: document.querySelector('[data-total-errors="A"]'),
+      B: document.querySelector('[data-total-errors="B"]')
+    };
+    const errBreakdownEls = {
+      A: document.querySelector('[data-err-breakdown="A"]'),
+      B: document.querySelector('[data-err-breakdown="B"]')
+    };
+    const playerErrorsEls = {
+      A: document.querySelector('[data-player-errors="A"]'),
+      B: document.querySelector('[data-player-errors="B"]')
+    };
+
+    const countEls = {};
+    document.querySelectorAll("[data-count]").forEach(span => {
+      countEls[span.getAttribute("data-count")] = span;
+    });
+
+    const nameInputs = document.querySelectorAll("[data-name-input]");
+    const playerLabelSpans = {};
+    document.querySelectorAll("[data-player-label]").forEach(span => {
+      playerLabelSpans[span.getAttribute("data-player-label")] = span;
+    });
+
+    const rallyCountEl = document.getElementById("rallyCount");
+    const rallyAddBtn = document.getElementById("rallyAddBtn");
+    const rallySaveBtn = document.getElementById("rallySaveBtn");
+    const rallyStatsLine = document.getElementById("rallyStatsLine");
+    const rallyListEl = document.getElementById("rallyList");
+
+    // ----- CHARTS -----
+    const ctxError = document.getElementById("errorBreakdownChart").getContext("2d");
+    const ctxPerGame = document.getElementById("perGameChart").getContext("2d");
+
+    const errorBreakdownChart = new Chart(ctxError, {
+      type: "bar",
+      data: {
+        labels: errorKeys.map(k => {
+          switch (k) {
+            case "service": return "Service";
+            case "return": return "Return";
+            case "net": return "Net";
+            case "wide": return "Wide";
+            case "long": return "Long";
+            case "high": return "High";
+          }
+        }),
+        datasets: [
+          { label: "Team A", data: [0,0,0,0,0,0] },
+          { label: "Team B", data: [0,0,0,0,0,0] }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            ticks: { callback: v => v + "%", font: { size: 10 } },
+            grid: { display: true }
+          },
+          x: {
+            ticks: { font: { size: 10 } },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { labels: { font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(0)}%`
+            }
+          }
+        }
+      }
+    });
+
+    const perGameChart = new Chart(ctxPerGame, {
+      type: "bar",
+      data: {
+        labels: games.map((g, idx) => `G${idx+1}`),
+        datasets: [
+          { label: "Team A", data: games.map(() => 0) },
+          { label: "Team B", data: games.map(() => 0) }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, font: { size: 10 } },
+            grid: { display: true }
+          },
+          x: {
+            ticks: { font: { size: 10 } },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { labels: { font: { size: 10 } } },
+          tooltip: {
+            callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} errors` }
+          }
+        }
+      }
+    });
+
+    // ----- HELPERS -----
+    function getCurrentGame() {
+      return games[currentGameIndex];
+    }
+
+    function updateGameChips() {
+      gameChipsContainer.innerHTML = "";
+      games.forEach((g, idx) => {
+        const totalA = sumErrorsForTeam(g.stats.teamA);
+        const totalB = sumErrorsForTeam(g.stats.teamB);
+        const total = totalA + totalB;
+
+        const chip = document.createElement("button");
+        chip.className = "game-chip" + (idx === currentGameIndex ? " active" : "");
+        chip.textContent = `Game ${idx + 1}`;
+        if (total > 0) {
+          const span = document.createElement("span");
+          span.textContent = `${total}E`;
+          chip.appendChild(span);
+        }
+        chip.addEventListener("click", () => {
+          currentGameIndex = idx;
+          syncUI();
+        });
+        gameChipsContainer.appendChild(chip);
+      });
+    }
+
+    function syncCountsForTeam(game, teamKey) {
+      const teamStats = teamKey === "A" ? game.stats.teamA : game.stats.teamB;
+      [...errorKeys, ...nonErrorKeys].forEach(key => {
+        const elKey = `${teamKey}-${key}`;
+        const val = (teamStats.p1[key] || 0) + (teamStats.p2[key] || 0);
+        if (countEls[elKey]) countEls[elKey].textContent = val;
+      });
+    }
+
+    function syncTotalsAndBreakdown(game) {
+      const statsA = game.stats.teamA;
+      const statsB = game.stats.teamB;
+
+      const totalA = sumErrorsForTeam(statsA);
+      const totalB = sumErrorsForTeam(statsB);
+
+      totalErrorsEls.A.textContent = totalA;
+      totalErrorsEls.B.textContent = totalB;
+
+      const p1A = sumErrorsForPlayer(statsA.p1);
+      const p2A = sumErrorsForPlayer(statsA.p2);
+      const p1B = sumErrorsForPlayer(statsB.p1);
+      const p2B = sumErrorsForPlayer(statsB.p2);
+
+      if (playerErrorsEls.A) {
+        playerErrorsEls.A.textContent =
+          `${playerNames.A.p1}: ${p1A} · ${playerNames.A.p2}: ${p2A}`;
+      }
+      if (playerErrorsEls.B) {
+        playerErrorsEls.B.textContent =
+          `${playerNames.B.p1}: ${p1B} · ${playerNames.B.p2}: ${p2B}`;
+      }
+
+      const topA = getTopErrorInfoForTeam(statsA);
+      const topB = getTopErrorInfoForTeam(statsB);
+
+      errBreakdownEls.A.textContent = topA ? `${topA.label} ${topA.pct}%` : "No errors yet";
+      errBreakdownEls.B.textContent = topB ? `${topB.label} ${topB.pct}%` : "No errors yet";
+    }
+
+    function updateCharts() {
+      const game = getCurrentGame();
+      const statsA = game.stats.teamA;
+      const statsB = game.stats.teamB;
+
+      const totalA = sumErrorsForTeam(statsA);
+      const totalB = sumErrorsForTeam(statsB);
+
+      errorKeys.forEach((key, idx) => {
+        const aCount = (statsA.p1[key] || 0) + (statsA.p2[key] || 0);
+        const bCount = (statsB.p1[key] || 0) + (statsB.p2[key] || 0);
+
+        errorBreakdownChart.data.datasets[0].data[idx] = totalA ? (aCount / totalA) * 100 : 0;
+        errorBreakdownChart.data.datasets[1].data[idx] = totalB ? (bCount / totalB) * 100 : 0;
+      });
+      errorBreakdownChart.update("none");
+
+      perGameChart.data.labels = games.map((g, idx) => `G${idx + 1}`);
+      perGameChart.data.datasets[0].data = games.map(g => sumErrorsForTeam(g.stats.teamA));
+      perGameChart.data.datasets[1].data = games.map(g => sumErrorsForTeam(g.stats.teamB));
+      perGameChart.update("none");
+    }
+
+    function syncGameLabels() {
+      const label = (currentGameIndex + 1).toString();
+      currentGameLabelA.textContent = label;
+      currentGameLabelB.textContent = label;
+    }
+
+    function renderHistory() {
+      if (!historyList || !historyCountSpan) return;
+      historyCountSpan.textContent = matches.length;
+      historyList.innerHTML = "";
+
+      if (matches.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "history-empty";
+        empty.textContent = 'No saved matches yet. Use "Save Match" after a session.';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      const last = matches.slice(-3).reverse();
+      last.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        const created = new Date(m.createdAt || Date.now());
+        const dateStr = created.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        const gamesCount = Array.isArray(m.games) ? m.games.length : 0;
+        const totalA = gamesCount ? sumErrorsForGameArray(m.games, "A") : 0;
+        const totalB = gamesCount ? sumErrorsForGameArray(m.games, "B") : 0;
+
+        div.innerHTML = `
+          <div class="history-title">${m.label || "Match"}</div>
+          <div class="history-meta">${dateStr} · ${gamesCount} game${gamesCount === 1 ? "" : "s"}</div>
+          <div class="history-errors">A: ${totalA} errors · B: ${totalB} errors</div>
+        `;
+        historyList.appendChild(div);
+      });
+    }
+
+    function syncPlayerToggleUI() {
+      document.querySelectorAll(".player-pill").forEach(btn => {
+        const team = btn.getAttribute("data-team");
+        const player = btn.getAttribute("data-player");
+        btn.classList.toggle("active", activePlayer[team] === player);
+      });
+    }
+
+    function syncPlayerNameUI() {
+      // inputs
+      nameInputs.forEach(input => {
+        const key = input.getAttribute("data-name-input"); // e.g. A-p1
+        const [team, player] = key.split("-");
+        input.value = playerNames[team][player];
+      });
+      // labels on toggle buttons
+      Object.keys(playerLabelSpans).forEach(key => {
+        const [team, player] = key.split("-");
+        playerLabelSpans[key].textContent = playerNames[team][player];
+      });
+    }
+
+    // Rally UI
+    function syncRallyUI() {
+      const game = getCurrentGame();
+      const hits = game.currentRally || 0;
+      rallyCountEl.textContent = hits;
+
+      const points = game.rallies.length;
+      const totalHits = game.rallies.reduce((s, r) => s + r.hits, 0);
+      const avg = points ? (totalHits / points).toFixed(1) : "—";
+
+      rallyStatsLine.textContent = `Points tracked: ${points} · Avg rally: ${avg} hits`;
+
+      rallyListEl.innerHTML = "";
+      if (points === 0) return;
+      // show last 10 rallies
+      const slice = game.rallies.slice(-10);
+      slice.forEach((r, idx) => {
+        const chip = document.createElement("div");
+        chip.className = "rally-chip";
+        const labelName = playerNames[r.team][r.player];
+        chip.textContent = `${points - slice.length + idx + 1}: ${r.hits} hits (${labelName})`;
+        rallyListEl.appendChild(chip);
+      });
+    }
+
+    function syncUI() {
+      const game = getCurrentGame();
+      syncCountsForTeam(game, "A");
+      syncCountsForTeam(game, "B");
+      syncTotalsAndBreakdown(game);
+      syncGameLabels();
+      updateGameChips();
+      updateCharts();
+      renderHistory();
+      syncPlayerToggleUI();
+      syncPlayerNameUI();
+      syncRallyUI();
+      saveSessionState();
+    }
+
+    // ----- SHARE SUMMARY -----
+    function buildMatchSummary(match) {
+      const gamesArr = Array.isArray(match.games) ? match.games : [];
+      const gamesCount = gamesArr.length;
+
+      const created = new Date(match.createdAt || Date.now());
+      const dateStr = created.toLocaleString(undefined, {
+        month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+      });
+
+      const totalA = sumErrorsForGameArray(gamesArr, "A");
+      const totalB = sumErrorsForGameArray(gamesArr, "B");
+
+      let aggA_p1 = 0, aggA_p2 = 0, aggB_p1 = 0, aggB_p2 = 0;
+      let totalRallies = 0, totalHits = 0;
+
+      gamesArr.forEach(g => {
+        const sA = g.stats.teamA;
+        const sB = g.stats.teamB;
+        aggA_p1 += sumErrorsForPlayer(sA.p1);
+        aggA_p2 += sumErrorsForPlayer(sA.p2);
+        aggB_p1 += sumErrorsForPlayer(sB.p1);
+        aggB_p2 += sumErrorsForPlayer(sB.p2);
+
+        if (Array.isArray(g.rallies)) {
+          totalRallies += g.rallies.length;
+          totalHits += g.rallies.reduce((s,r)=>s+r.hits,0);
+        }
+      });
+
+      const avgRallyAll = totalRallies ? (totalHits/totalRallies).toFixed(1) : "—";
+
+      let lines = [];
+      lines.push("Pickleball Match Summary");
+      lines.push(match.label || "Match");
+      lines.push(dateStr);
+      lines.push(`Games: ${gamesCount}`);
+      lines.push("");
+      lines.push(`Team A total errors: ${totalA}`);
+      lines.push(`  ${playerNames.A.p1}: ${aggA_p1}`);
+      lines.push(`  ${playerNames.A.p2}: ${aggA_p2}`);
+      lines.push(`Team B total errors: ${totalB}`);
+      lines.push(`  ${playerNames.B.p1}: ${aggB_p1}`);
+      lines.push(`  ${playerNames.B.p2}: ${aggB_p2}`);
+      lines.push("");
+      lines.push(`Overall rally average: ${avgRallyAll} hits over ${totalRallies} points`);
+      lines.push("");
+
+      gamesArr.forEach((g, idx) => {
+        const sA = g.stats.teamA;
+        const sB = g.stats.teamB;
+        const gameLabel = `Game ${idx + 1}`;
+
+        const gameTotalA = sumErrorsForTeam(sA);
+        const gameTotalB = sumErrorsForTeam(sB);
+        const p1A = sumErrorsForPlayer(sA.p1);
+        const p2A = sumErrorsForPlayer(sA.p2);
+        const p1B = sumErrorsForPlayer(sB.p1);
+        const p2B = sumErrorsForPlayer(sB.p2);
+
+        const topA = getTopErrorInfoForTeam(sA);
+        const topB = getTopErrorInfoForTeam(sB);
+
+        const rallies = Array.isArray(g.rallies) ? g.rallies : [];
+        const totalR = rallies.length;
+        const totalRH = rallies.reduce((s,r)=>s+r.hits,0);
+        const avgR = totalR ? (totalRH/totalR).toFixed(1) : "—";
+
+        lines.push(`${gameLabel}`);
+        lines.push(
+          `  Team A: ${gameTotalA} errors (${playerNames.A.p1}: ${p1A}, ${playerNames.A.p2}: ${p2A})` +
+          (topA ? ` · Top: ${topA.label} ${topA.pct}%` : "")
+        );
+        lines.push(
+          `  Team B: ${gameTotalB} errors (${playerNames.B.p1}: ${p1B}, ${playerNames.B.p2}: ${p2B})` +
+          (topB ? ` · Top: ${topB.label} ${topB.pct}%` : "")
+        );
+        lines.push(`  Rally avg: ${avgR} hits (${totalR} points)`);
+        lines.push("");
+      });
+
+      lines.push("Generated from courtside stats tracker.");
+      return lines.join("\n");
+    }
+
+    async function shareLastMatch() {
+      if (!matches.length) {
+        alert('No saved matches yet. Tap "Save Match" after a session, then share.');
+        return;
+      }
+      const lastMatch = matches[matches.length - 1];
+      const summary = buildMatchSummary(lastMatch);
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Pickleball Match Summary", text: summary });
+          return;
+        } catch (err) {
+          console.warn("Share cancelled or failed", err);
+        }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(summary);
+          alert("Summary copied to clipboard. Paste into Messages, Notes, etc.");
+          return;
+        } catch (err) {
+          console.warn("Clipboard write failed", err);
+        }
+      }
+      alert(summary);
+    }
+
+    // ----- EVENT HANDLERS -----
+    document.querySelectorAll(".stat-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const team = btn.getAttribute("data-team");
+        const type = btn.getAttribute("data-type");
+        const key = btn.getAttribute("data-key");
+
+        const game = getCurrentGame();
+        const teamStats = team === "A" ? game.stats.teamA : game.stats.teamB;
+        const playerKey = activePlayer[team] || "p1";
+        const playerStats = teamStats[playerKey];
+
+        playerStats[key] = (playerStats[key] || 0) + 1;
+        game.history.push({ team, player: playerKey, key, type });
+        syncUI();
+      });
+    });
+
+    undoBtn.addEventListener("click", () => {
+      const game = getCurrentGame();
+      const last = game.history.pop();
+      if (!last) return;
+
+      const teamStats = last.team === "A" ? game.stats.teamA : game.stats.teamB;
+      const playerStats = teamStats[last.player];
+      if (playerStats && playerStats[last.key] > 0) playerStats[last.key] -= 1;
+
+      if (last.rallyHits && game.rallies.length) {
+        game.rallies.pop();
+      }
+      syncUI();
+    });
+
+    resetCurrentBtn.addEventListener("click", () => {
+      const game = getCurrentGame();
+      game.stats = createEmptyStats();
+      game.history = [];
+      game.rallies = [];
+      game.currentRally = 0;
+      syncUI();
+    });
+
+    resetAllBtn.addEventListener("click", () => {
+      games = [createEmptyGame(0), createEmptyGame(1), createEmptyGame(2)];
+      currentGameIndex = 0;
+      syncUI();
+    });
+
+    addGameBtn.addEventListener("click", () => {
+      const newGame = createEmptyGame(games.length);
+      games.push(newGame);
+      currentGameIndex = games.length - 1;
+      syncUI();
+    });
+
+    saveMatchBtn.addEventListener("click", async () => {
+      const snapshot = JSON.parse(JSON.stringify(games));
+      const now = new Date();
+      matches.push({
+        id: Date.now(),
+        createdAt: now.toISOString(),
+        label: `Match ${matches.length + 1}`,
+        games: snapshot
+      });
+      saveMatches();
+
+      games = [createEmptyGame(0), createEmptyGame(1), createEmptyGame(2)];
+      currentGameIndex = 0;
+      syncUI();
+
+      const autoShare = confirm("Match saved. Share summary now?");
+      if (autoShare) await shareLastMatch();
+    });
+
+    shareLastBtn.addEventListener("click", () => {
+      shareLastMatch();
+    });
+
+    document.querySelectorAll(".player-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const team = btn.getAttribute("data-team");
+        const player = btn.getAttribute("data-player");
+        activePlayer[team] = player;
+        document
+          .querySelectorAll(`.player-pill[data-team="${team}"]`)
+          .forEach(b => b.classList.toggle("active", b === btn));
+        saveSessionState();
+      });
+    });
+
+    nameInputs.forEach(input => {
+      const key = input.getAttribute("data-name-input"); // e.g. A-p1
+      const [team, player] = key.split("-");
+      input.addEventListener("change", () => {
+        const val = input.value.trim() || `${team}${player === "p1" ? "1" : "2"}`;
+        playerNames[team][player] = val;
+        syncPlayerNameUI();
+        syncTotalsAndBreakdown(getCurrentGame());
+        saveSessionState();
+      });
+    });
+
+    rallyAddBtn.addEventListener("click", () => {
+      const game = getCurrentGame();
+      game.currentRally = (game.currentRally || 0) + 1;
+      syncRallyUI();
+      saveSessionState();
+    });
+
+    rallySaveBtn.addEventListener("click", () => {
+      const game = getCurrentGame();
+      const hits = game.currentRally || 0;
+      if (!hits) return;
+      if (!game.history.length) {
+        alert("Record the point result first (error / winner), then save the rally.");
+        return;
+      }
+      const last = game.history[game.history.length - 1];
+      game.rallies.push({ hits, team: last.team, player: last.player });
+      last.rallyHits = hits;
+      game.currentRally = 0;
+      syncUI();
+    });
+
+    // ----- INITIAL RENDER -----
+    syncUI();
+  </script>
+</body>
+</html>
