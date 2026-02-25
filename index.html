@@ -1,534 +1,567 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pickleball Tracker V3</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* iOS Safe Area & Interaction Tweaks */
-        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
-        .btn-touch { transition: transform 0.05s; position: relative; overflow: hidden; }
-        .btn-touch:active { transform: scale(0.95); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Layout Grid for Stat Buttons */
-        .stat-btn {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            line-height: 1;
-        }
-        .stat-count { font-size: 1.1em; font-weight: 800; }
-        .stat-label { font-size: 0.65em; opacity: 0.9; margin-top: 2px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pickleball Tracker V3 (One Page)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* iOS Safe Area & Interaction Tweaks */
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+    .btn-touch { transition: transform 0.05s; position: relative; overflow: hidden; }
+    .btn-touch:active { transform: scale(0.95); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Stat Buttons */
+    .stat-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .stat-count { font-size: 1.05em; font-weight: 800; }
+    .stat-label { font-size: 0.62em; opacity: 0.9; margin-top: 2px; letter-spacing: .02em; }
+
+    /* Keep everything on one screen */
+    #input-area { overflow: hidden !important; }
+    #players-grid { height: 100%; }
+
+    /* Make buttons slightly smaller so 2x2 cards fit on mobile */
+    .btn-h { height: 2.25rem; } /* 36px */
+    @media (max-height: 740px) {
+      .btn-h { height: 2.125rem; } /* 34px */
+      .stat-count { font-size: 1.0em; }
+      .stat-label { font-size: 0.6em; }
+    }
+    @media (max-height: 680px) {
+      header { padding-top: .35rem !important; padding-bottom: .35rem !important; }
+      .btn-h { height: 2rem; } /* 32px */
+      .stat-count { font-size: .95em; }
+      .stat-label { font-size: .58em; }
+    }
+  </style>
 </head>
+
 <body class="bg-slate-900 text-white h-screen flex flex-col font-sans overflow-hidden">
 
-    <header class="bg-slate-800 p-2 flex justify-between items-center shadow-lg shrink-0 z-20 border-b border-slate-700">
-        <div class="flex items-center space-x-2 overflow-hidden flex-1">
-            <button onclick="app.toggleMenu()" class="text-2xl mr-2 px-2">☰</button>
-            <div class="flex flex-col overflow-hidden">
-                <h1 id="header-match-title" class="font-bold text-sm tracking-wide text-blue-400 truncate">PB TRACKER</h1>
-                <span id="header-date" class="text-[10px] text-slate-500 hidden">Date</span>
-            </div>
-        </div>
-        
-        <div class="flex space-x-2 shrink-0">
-             <select id="game-selector" onchange="app.switchGame(this.value)" class="bg-slate-700 text-white text-xs rounded px-2 py-1 outline-none border border-slate-600">
-                <option value="1">Game 1</option>
-                <option value="2">Game 2</option>
-                <option value="3">Game 3</option>
-            </select>
-            <button onclick="app.undoLast()" class="bg-slate-700 text-slate-300 rounded px-3 py-1 text-xs font-bold border border-slate-600">UNDO</button>
-            <button onclick="app.showStats()" class="bg-blue-600 text-white rounded px-3 py-1 text-xs font-bold shadow">📊</button>
-        </div>
-    </header>
-
-    <div id="main-menu" class="fixed inset-0 bg-slate-900/95 z-50 hidden flex flex-col justify-center items-center space-y-6 p-8 transition-opacity">
-        <h2 class="text-3xl font-bold text-white mb-4">Menu</h2>
-        
-        <button onclick="app.setupNewMatch()" class="w-full max-w-sm bg-green-600 p-4 rounded-xl font-bold text-lg shadow-lg">➕ START NEW MATCH</button>
-        
-        <button onclick="app.editMatchName()" class="w-full max-w-sm bg-slate-700 p-4 rounded-xl font-bold text-lg border border-slate-600">✏️ RENAME MATCH</button>
-        
-        <div class="w-full max-w-sm border-t border-slate-700 pt-6">
-            <h3 class="text-slate-400 mb-4 text-center">Match History</h3>
-            <div id="menu-history-list" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
-                </div>
-        </div>
-
-        <button onclick="app.toggleMenu()" class="mt-8 text-slate-400 font-bold">CLOSE MENU</button>
+  <header class="bg-slate-800 p-2 flex justify-between items-center shadow-lg shrink-0 z-20 border-b border-slate-700">
+    <div class="flex items-center space-x-2 overflow-hidden flex-1">
+      <button onclick="app.toggleMenu()" class="text-2xl mr-2 px-2">☰</button>
+      <div class="flex flex-col overflow-hidden">
+        <h1 id="header-match-title" class="font-bold text-sm tracking-wide text-blue-400 truncate">PB TRACKER</h1>
+        <span id="header-date" class="text-[10px] text-slate-500 hidden">Date</span>
+      </div>
     </div>
 
-    <div class="flex text-center font-bold text-sm shrink-0 z-10 bg-slate-900">
-        <button onclick="app.switchTab('A')" id="tab-btn-A" class="flex-1 py-2 bg-slate-700 border-b-2 border-blue-500 text-blue-100 transition-colors">TEAM A</button>
-        <button onclick="app.switchTab('B')" id="tab-btn-B" class="flex-1 py-2 bg-slate-800 border-b-2 border-transparent text-slate-500 transition-colors">TEAM B</button>
+    <div class="flex space-x-2 shrink-0">
+      <select id="game-selector" onchange="app.switchGame(this.value)"
+        class="bg-slate-700 text-white text-xs rounded px-2 py-1 outline-none border border-slate-600">
+        <option value="1">Game 1</option>
+        <option value="2">Game 2</option>
+        <option value="3">Game 3</option>
+      </select>
+      <button onclick="app.undoLast()"
+        class="bg-slate-700 text-slate-300 rounded px-3 py-1 text-xs font-bold border border-slate-600">
+        UNDO
+      </button>
+      <button onclick="app.showStats()" class="bg-blue-600 text-white rounded px-3 py-1 text-xs font-bold shadow">
+        📊
+      </button>
+    </div>
+  </header>
+
+  <div id="main-menu"
+    class="fixed inset-0 bg-slate-900/95 z-50 hidden flex flex-col justify-center items-center space-y-6 p-8 transition-opacity">
+    <h2 class="text-3xl font-bold text-white mb-4">Menu</h2>
+
+    <button onclick="app.setupNewMatch()" class="w-full max-w-sm bg-green-600 p-4 rounded-xl font-bold text-lg shadow-lg">
+      ➕ START NEW MATCH
+    </button>
+
+    <button onclick="app.editMatchName()" class="w-full max-w-sm bg-slate-700 p-4 rounded-xl font-bold text-lg border border-slate-600">
+      ✏️ RENAME MATCH
+    </button>
+
+    <div class="w-full max-w-sm border-t border-slate-700 pt-6">
+      <h3 class="text-slate-400 mb-4 text-center">Match History</h3>
+      <div id="menu-history-list" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar"></div>
     </div>
 
-    <div id="input-area" class="flex-1 overflow-y-auto no-scrollbar relative bg-slate-900 pb-24">
-        
-        <div id="view-A" class="p-2 space-y-2">
-            <div class="bg-slate-800 rounded-lg p-2 border border-slate-700">
-                <h3 class="text-blue-300 font-bold text-sm mb-1 truncate" id="lbl-p1">Player 1</h3>
-                <div class="grid grid-cols-6 gap-1 mb-1">
-                    <button onclick="app.addStat('p1', 'err_serve')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p1" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
-                    <button onclick="app.addStat('p1', 'err_return')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p1" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
-                    <button onclick="app.addStat('p1', 'err_net')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p1" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
-                    <button onclick="app.addStat('p1', 'err_wide')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p1" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
-                    <button onclick="app.addStat('p1', 'err_long')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p1" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
-                    <button onclick="app.addStat('p1', 'err_high')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p1" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
-                </div>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="app.addStat('p1', 'winner')" class="btn-touch stat-btn bg-green-800 text-white h-10 rounded border border-green-700" data-p="p1" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
-                    <button onclick="app.addStat('p1', 'dink')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p1" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
-                    <button onclick="app.addStat('p1', 'recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p1" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
-                    <button onclick="app.addStat('p1', 'outball')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p1" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
-                </div>
-            </div>
+    <button onclick="app.toggleMenu()" class="mt-8 text-slate-400 font-bold">CLOSE MENU</button>
+  </div>
 
-            <div class="bg-slate-800 rounded-lg p-2 border border-slate-700">
-                <h3 class="text-blue-300 font-bold text-sm mb-1 truncate" id="lbl-p2">Player 2</h3>
-                 <div class="grid grid-cols-6 gap-1 mb-1">
-                    <button onclick="app.addStat('p2', 'err_serve')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p2" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
-                    <button onclick="app.addStat('p2', 'err_return')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p2" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
-                    <button onclick="app.addStat('p2', 'err_net')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p2" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
-                    <button onclick="app.addStat('p2', 'err_wide')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p2" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
-                    <button onclick="app.addStat('p2', 'err_long')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p2" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
-                    <button onclick="app.addStat('p2', 'err_high')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p2" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
-                </div>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="app.addStat('p2', 'winner')" class="btn-touch stat-btn bg-green-800 text-white h-10 rounded border border-green-700" data-p="p2" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
-                    <button onclick="app.addStat('p2', 'dink')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p2" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
-                    <button onclick="app.addStat('p2', 'recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p2" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
-                    <button onclick="app.addStat('p2', 'outball')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p2" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
-                </div>
-            </div>
+  <!-- ONE-PAGE INPUT AREA (no tabs, no scrolling) -->
+  <div id="input-area" class="flex-1 relative bg-slate-900 p-2">
+    <div id="players-grid" class="grid grid-cols-2 grid-rows-2 gap-2">
+      <!-- P1 -->
+      <div class="bg-slate-800 rounded-lg p-2 border border-slate-700 flex flex-col min-h-0">
+        <h3 class="text-blue-300 font-bold text-sm mb-1 truncate" id="lbl-p1">Player 1</h3>
+        <div class="grid grid-cols-6 gap-1 mb-1">
+          <button onclick="app.addStat('p1','err_serve')"   class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p1" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
+          <button onclick="app.addStat('p1','err_return')"  class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p1" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
+          <button onclick="app.addStat('p1','err_net')"     class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p1" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
+          <button onclick="app.addStat('p1','err_wide')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p1" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
+          <button onclick="app.addStat('p1','err_long')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p1" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
+          <button onclick="app.addStat('p1','err_high')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p1" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
         </div>
-
-        <div id="view-B" class="p-2 space-y-2 hidden">
-             <div class="bg-slate-800 rounded-lg p-2 border border-slate-700">
-                <h3 class="text-orange-300 font-bold text-sm mb-1 truncate" id="lbl-p3">Player 3</h3>
-                <div class="grid grid-cols-6 gap-1 mb-1">
-                    <button onclick="app.addStat('p3', 'err_serve')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p3" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
-                    <button onclick="app.addStat('p3', 'err_return')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p3" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
-                    <button onclick="app.addStat('p3', 'err_net')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p3" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
-                    <button onclick="app.addStat('p3', 'err_wide')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p3" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
-                    <button onclick="app.addStat('p3', 'err_long')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p3" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
-                    <button onclick="app.addStat('p3', 'err_high')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p3" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
-                </div>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="app.addStat('p3', 'winner')" class="btn-touch stat-btn bg-green-800 text-white h-10 rounded border border-green-700" data-p="p3" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
-                    <button onclick="app.addStat('p3', 'dink')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p3" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
-                    <button onclick="app.addStat('p3', 'recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p3" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
-                    <button onclick="app.addStat('p3', 'outball')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p3" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
-                </div>
-            </div>
-
-            <div class="bg-slate-800 rounded-lg p-2 border border-slate-700">
-                <h3 class="text-orange-300 font-bold text-sm mb-1 truncate" id="lbl-p4">Player 4</h3>
-                <div class="grid grid-cols-6 gap-1 mb-1">
-                    <button onclick="app.addStat('p4', 'err_serve')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p4" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
-                    <button onclick="app.addStat('p4', 'err_return')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p4" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
-                    <button onclick="app.addStat('p4', 'err_net')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p4" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
-                    <button onclick="app.addStat('p4', 'err_wide')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p4" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
-                    <button onclick="app.addStat('p4', 'err_long')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p4" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
-                    <button onclick="app.addStat('p4', 'err_high')" class="btn-touch stat-btn bg-red-900/40 text-red-200 h-10 rounded border border-red-900/50" data-p="p4" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
-                </div>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="app.addStat('p4', 'winner')" class="btn-touch stat-btn bg-green-800 text-white h-10 rounded border border-green-700" data-p="p4" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
-                    <button onclick="app.addStat('p4', 'dink')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p4" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
-                    <button onclick="app.addStat('p4', 'recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p4" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
-                    <button onclick="app.addStat('p4', 'outball')" class="btn-touch stat-btn bg-slate-600 text-slate-200 h-10 rounded border border-slate-500" data-p="p4" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
-                </div>
-            </div>
+        <div class="grid grid-cols-4 gap-1">
+          <button onclick="app.addStat('p1','winner')"   class="btn-touch stat-btn bg-green-800 text-white btn-h rounded border border-green-700" data-p="p1" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
+          <button onclick="app.addStat('p1','dink')"     class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p1" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
+          <button onclick="app.addStat('p1','recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p1" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
+          <button onclick="app.addStat('p1','outball')"  class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p1" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
         </div>
+      </div>
+
+      <!-- P2 -->
+      <div class="bg-slate-800 rounded-lg p-2 border border-slate-700 flex flex-col min-h-0">
+        <h3 class="text-blue-300 font-bold text-sm mb-1 truncate" id="lbl-p2">Player 2</h3>
+        <div class="grid grid-cols-6 gap-1 mb-1">
+          <button onclick="app.addStat('p2','err_serve')"   class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p2" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
+          <button onclick="app.addStat('p2','err_return')"  class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p2" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
+          <button onclick="app.addStat('p2','err_net')"     class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p2" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
+          <button onclick="app.addStat('p2','err_wide')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p2" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
+          <button onclick="app.addStat('p2','err_long')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p2" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
+          <button onclick="app.addStat('p2','err_high')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p2" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
+        </div>
+        <div class="grid grid-cols-4 gap-1">
+          <button onclick="app.addStat('p2','winner')"   class="btn-touch stat-btn bg-green-800 text-white btn-h rounded border border-green-700" data-p="p2" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
+          <button onclick="app.addStat('p2','dink')"     class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p2" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
+          <button onclick="app.addStat('p2','recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p2" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
+          <button onclick="app.addStat('p2','outball')"  class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p2" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
+        </div>
+      </div>
+
+      <!-- P3 -->
+      <div class="bg-slate-800 rounded-lg p-2 border border-slate-700 flex flex-col min-h-0">
+        <h3 class="text-orange-300 font-bold text-sm mb-1 truncate" id="lbl-p3">Player 3</h3>
+        <div class="grid grid-cols-6 gap-1 mb-1">
+          <button onclick="app.addStat('p3','err_serve')"   class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p3" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
+          <button onclick="app.addStat('p3','err_return')"  class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p3" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
+          <button onclick="app.addStat('p3','err_net')"     class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p3" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
+          <button onclick="app.addStat('p3','err_wide')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p3" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
+          <button onclick="app.addStat('p3','err_long')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p3" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
+          <button onclick="app.addStat('p3','err_high')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p3" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
+        </div>
+        <div class="grid grid-cols-4 gap-1">
+          <button onclick="app.addStat('p3','winner')"   class="btn-touch stat-btn bg-green-800 text-white btn-h rounded border border-green-700" data-p="p3" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
+          <button onclick="app.addStat('p3','dink')"     class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p3" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
+          <button onclick="app.addStat('p3','recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p3" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
+          <button onclick="app.addStat('p3','outball')"  class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p3" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
+        </div>
+      </div>
+
+      <!-- P4 -->
+      <div class="bg-slate-800 rounded-lg p-2 border border-slate-700 flex flex-col min-h-0">
+        <h3 class="text-orange-300 font-bold text-sm mb-1 truncate" id="lbl-p4">Player 4</h3>
+        <div class="grid grid-cols-6 gap-1 mb-1">
+          <button onclick="app.addStat('p4','err_serve')"   class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p4" data-t="err_serve"><span class="stat-count">0</span><span class="stat-label">SRV</span></button>
+          <button onclick="app.addStat('p4','err_return')"  class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p4" data-t="err_return"><span class="stat-count">0</span><span class="stat-label">RET</span></button>
+          <button onclick="app.addStat('p4','err_net')"     class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p4" data-t="err_net"><span class="stat-count">0</span><span class="stat-label">NET</span></button>
+          <button onclick="app.addStat('p4','err_wide')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p4" data-t="err_wide"><span class="stat-count">0</span><span class="stat-label">WIDE</span></button>
+          <button onclick="app.addStat('p4','err_long')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p4" data-t="err_long"><span class="stat-count">0</span><span class="stat-label">LONG</span></button>
+          <button onclick="app.addStat('p4','err_high')"    class="btn-touch stat-btn bg-red-900/40 text-red-200 btn-h rounded border border-red-900/50" data-p="p4" data-t="err_high"><span class="stat-count">0</span><span class="stat-label">HIGH</span></button>
+        </div>
+        <div class="grid grid-cols-4 gap-1">
+          <button onclick="app.addStat('p4','winner')"   class="btn-touch stat-btn bg-green-800 text-white btn-h rounded border border-green-700" data-p="p4" data-t="winner"><span class="stat-count">0</span><span class="stat-label">WIN</span></button>
+          <button onclick="app.addStat('p4','dink')"     class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p4" data-t="dink"><span class="stat-count">0</span><span class="stat-label">DINK</span></button>
+          <button onclick="app.addStat('p4','recovery')" class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p4" data-t="recovery"><span class="stat-count">0</span><span class="stat-label">REC</span></button>
+          <button onclick="app.addStat('p4','outball')"  class="btn-touch stat-btn bg-slate-600 text-slate-200 btn-h rounded border border-slate-500" data-p="p4" data-t="outball"><span class="stat-count">0</span><span class="stat-label">OUT</span></button>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div class="shrink-0 bg-slate-800 border-t border-slate-700 p-2 pb-6 z-30 flex items-stretch h-24">
-        <button onclick="app.rallyTap()" class="flex-1 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg flex flex-col justify-center items-center shadow-lg active:scale-95 transition-transform mr-2">
-            <span class="text-xs font-bold text-indigo-200 uppercase tracking-widest">Rally Count</span>
-            <span id="rally-display" class="text-4xl font-black text-white">0</span>
+  <div class="shrink-0 bg-slate-800 border-t border-slate-700 p-2 pb-6 z-30 flex items-stretch h-24">
+    <button onclick="app.rallyTap()"
+      class="flex-1 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg flex flex-col justify-center items-center shadow-lg active:scale-95 transition-transform mr-2">
+      <span class="text-xs font-bold text-indigo-200 uppercase tracking-widest">Rally Count</span>
+      <span id="rally-display" class="text-4xl font-black text-white">0</span>
+    </button>
+    <button onclick="app.rallySave()"
+      class="w-24 bg-slate-700 rounded-lg flex flex-col justify-center items-center border border-slate-600 active:bg-slate-600">
+      <span class="text-2xl">💾</span>
+      <span class="text-xs font-bold text-slate-300 mt-1">SAVE POINT</span>
+    </button>
+  </div>
+
+  <div id="setup-screen" class="absolute inset-0 bg-slate-900 z-50 flex flex-col p-6 overflow-y-auto hidden">
+    <h2 class="text-2xl font-bold mb-6 text-center text-blue-400">Match Setup</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-400 font-bold uppercase ml-1">Match Name</label>
+        <input type="text" id="match-title-input" placeholder="e.g. Finals vs John"
+          class="w-full bg-slate-800 border border-slate-600 p-4 rounded-xl text-white text-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+      </div>
+
+      <div class="bg-slate-800 p-4 rounded-xl border border-blue-900/50">
+        <h3 class="text-blue-400 font-bold mb-3">TEAM A</h3>
+        <input type="text" id="p1-name" placeholder="Player 1 Name" class="w-full bg-slate-700 p-3 rounded mb-3 text-white" />
+        <input type="text" id="p2-name" placeholder="Player 2 Name" class="w-full bg-slate-700 p-3 rounded text-white" />
+      </div>
+
+      <div class="bg-slate-800 p-4 rounded-xl border border-orange-900/50">
+        <h3 class="text-orange-400 font-bold mb-3">TEAM B</h3>
+        <input type="text" id="p3-name" placeholder="Player 3 Name" class="w-full bg-slate-700 p-3 rounded mb-3 text-white" />
+        <input type="text" id="p4-name" placeholder="Player 4 Name" class="w-full bg-slate-700 p-3 rounded text-white" />
+      </div>
+
+      <div class="flex space-x-2">
+        <button onclick="app.startMatch()"
+          class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg text-lg">
+          START MATCH
         </button>
-        <button onclick="app.rallySave()" class="w-24 bg-slate-700 rounded-lg flex flex-col justify-center items-center border border-slate-600 active:bg-slate-600">
-            <span class="text-2xl">💾</span>
-            <span class="text-xs font-bold text-slate-300 mt-1">SAVE POINT</span>
+        <button onclick="app.closeSetup()" id="cancel-setup-btn" class="hidden px-4 bg-slate-700 rounded-xl font-bold">
+          CANCEL
         </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats-modal" class="fixed inset-0 bg-slate-900 z-40 hidden flex flex-col p-4 overflow-y-auto">
+    <div class="flex justify-between items-center mb-4 shrink-0">
+      <h2 class="text-xl font-bold">Match Analytics</h2>
+      <button onclick="app.closeStats()" class="text-blue-400 font-bold p-2">CLOSE</button>
+    </div>
+    <div class="flex space-x-2 mb-4 shrink-0">
+      <button onclick="app.shareStats()" class="bg-green-600 text-white px-4 py-3 rounded flex-1 font-bold shadow text-sm">
+        📤 SHARE SUMMARY
+      </button>
     </div>
 
-    <div id="setup-screen" class="absolute inset-0 bg-slate-900 z-50 flex flex-col p-6 overflow-y-auto hidden">
-        <h2 class="text-2xl font-bold mb-6 text-center text-blue-400">Match Setup</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="text-xs text-slate-400 font-bold uppercase ml-1">Match Name</label>
-                <input type="text" id="match-title-input" placeholder="e.g. Finals vs John" class="w-full bg-slate-800 border border-slate-600 p-4 rounded-xl text-white text-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-            </div>
-
-            <div class="bg-slate-800 p-4 rounded-xl border border-blue-900/50">
-                <h3 class="text-blue-400 font-bold mb-3">TEAM A</h3>
-                <input type="text" id="p1-name" placeholder="Player 1 Name" class="w-full bg-slate-700 p-3 rounded mb-3 text-white">
-                <input type="text" id="p2-name" placeholder="Player 2 Name" class="w-full bg-slate-700 p-3 rounded text-white">
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-orange-900/50">
-                <h3 class="text-orange-400 font-bold mb-3">TEAM B</h3>
-                <input type="text" id="p3-name" placeholder="Player 3 Name" class="w-full bg-slate-700 p-3 rounded mb-3 text-white">
-                <input type="text" id="p4-name" placeholder="Player 4 Name" class="w-full bg-slate-700 p-3 rounded text-white">
-            </div>
-            
-            <div class="flex space-x-2">
-                <button onclick="app.startMatch()" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg text-lg">START MATCH</button>
-                <button onclick="app.closeSetup()" id="cancel-setup-btn" class="hidden px-4 bg-slate-700 rounded-xl font-bold">CANCEL</button>
-            </div>
+    <div class="space-y-4">
+      <div class="bg-slate-800 p-3 rounded shadow border border-slate-700">
+        <h3 class="text-indigo-300 font-bold text-sm mb-2">Rally Analysis</h3>
+        <div class="flex justify-between items-end mb-2">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white" id="stat-avg-rally">0</div>
+            <div class="text-xs text-slate-400">Avg Hits</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white" id="stat-max-rally">0</div>
+            <div class="text-xs text-slate-400">Max Hits</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-white" id="stat-total-points">0</div>
+            <div class="text-xs text-slate-400">Pts Played</div>
+          </div>
         </div>
+        <div class="h-24 overflow-y-auto bg-slate-900 rounded p-2 text-xs font-mono text-slate-300" id="rally-log"></div>
+      </div>
+
+      <div class="bg-slate-800 p-2 rounded shadow h-48">
+        <canvas id="errorChart"></canvas>
+      </div>
+
+      <div id="stats-text-container" class="bg-slate-800 p-3 rounded text-sm space-y-2 pb-20"></div>
     </div>
+  </div>
 
-    <div id="stats-modal" class="fixed inset-0 bg-slate-900 z-40 hidden flex flex-col p-4 overflow-y-auto">
-        <div class="flex justify-between items-center mb-4 shrink-0">
-            <h2 class="text-xl font-bold">Match Analytics</h2>
-            <button onclick="app.closeStats()" class="text-blue-400 font-bold p-2">CLOSE</button>
-        </div>
-        <div class="flex space-x-2 mb-4 shrink-0">
-             <button onclick="app.shareStats()" class="bg-green-600 text-white px-4 py-3 rounded flex-1 font-bold shadow text-sm">📤 SHARE SUMMARY</button>
-        </div>
-        
-        <div class="space-y-4">
-            <div class="bg-slate-800 p-3 rounded shadow border border-slate-700">
-                <h3 class="text-indigo-300 font-bold text-sm mb-2">Rally Analysis</h3>
-                <div class="flex justify-between items-end mb-2">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-white" id="stat-avg-rally">0</div>
-                        <div class="text-xs text-slate-400">Avg Hits</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-white" id="stat-max-rally">0</div>
-                        <div class="text-xs text-slate-400">Max Hits</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-white" id="stat-total-points">0</div>
-                        <div class="text-xs text-slate-400">Pts Played</div>
-                    </div>
-                </div>
-                <div class="h-24 overflow-y-auto bg-slate-900 rounded p-2 text-xs font-mono text-slate-300" id="rally-log"></div>
+  <script>
+    const app = {
+      STORAGE_KEY: 'pb_active_match_v3',
+      HISTORY_KEY: 'pb_match_history_v3',
+
+      data: {
+        matchId: null,
+        title: '',
+        date: null,
+        players: { p1: '', p2: '', p3: '', p4: '' },
+        currentGame: 1,
+        stats: { 1: [], 2: [], 3: [] },
+        rallyStats: { 1: [], 2: [], 3: [] }
+      },
+      currentRallyCount: 0,
+
+      init: function () {
+        this.loadFromStorage();
+
+        if (this.data.matchId) {
+          this.resumeUI();
+        } else {
+          document.getElementById('setup-screen').classList.remove('hidden');
+          document.getElementById('cancel-setup-btn').classList.add('hidden');
+        }
+      },
+
+      // --- DATA PERSISTENCE ---
+      loadFromStorage: function () {
+        const active = localStorage.getItem(this.STORAGE_KEY);
+        if (active) this.data = JSON.parse(active);
+      },
+      saveToStorage: function () {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+
+        let history = JSON.parse(localStorage.getItem(this.HISTORY_KEY) || '[]');
+        const idx = history.findIndex(m => m.matchId === this.data.matchId);
+        if (idx > -1) history[idx] = this.data;
+        else history.unshift(this.data);
+        localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
+
+        this.updateButtonCounts();
+        this.updateHeader();
+      },
+
+      // --- NAVIGATION & MENUS ---
+      toggleMenu: function () {
+        const menu = document.getElementById('main-menu');
+        if (menu.classList.contains('hidden')) {
+          menu.classList.remove('hidden');
+          this.renderMenuHistory();
+        } else {
+          menu.classList.add('hidden');
+        }
+      },
+      setupNewMatch: function () {
+        if (confirm("Start a new match? Current match will be saved to history.")) {
+          localStorage.removeItem(this.STORAGE_KEY);
+          location.reload();
+        }
+      },
+      editMatchName: function () {
+        const newName = prompt("Enter new match name:", this.data.title);
+        if (newName) {
+          this.data.title = newName;
+          this.saveToStorage();
+          this.toggleMenu();
+        }
+      },
+      renderMenuHistory: function () {
+        const history = JSON.parse(localStorage.getItem(this.HISTORY_KEY) || '[]');
+        const container = document.getElementById('menu-history-list');
+        container.innerHTML = '';
+        if (history.length === 0) {
+          container.innerHTML = '<div class="text-center text-slate-500 text-sm">No history yet</div>';
+          return;
+        }
+        history.forEach(match => {
+          const div = document.createElement('div');
+          div.className = "bg-slate-800 p-3 rounded flex justify-between items-center border border-slate-700";
+          div.innerHTML = `
+            <div class="overflow-hidden">
+              <div class="text-sm font-bold text-white truncate w-40">${match.title || 'Untitled'}</div>
+              <div class="text-xs text-slate-400">${new Date(match.date).toLocaleDateString()}</div>
             </div>
+            <button class="bg-blue-600 px-3 py-1 rounded text-xs font-bold" onclick="app.loadMatch('${match.matchId}')">LOAD</button>
+          `;
+          container.appendChild(div);
+        });
+      },
 
-            <div class="bg-slate-800 p-2 rounded shadow h-48">
-                <canvas id="errorChart"></canvas>
-            </div>
-            
-            <div id="stats-text-container" class="bg-slate-800 p-3 rounded text-sm space-y-2 pb-20"></div>
-        </div>
-    </div>
+      // --- MATCH SETUP ---
+      startMatch: function () {
+        const title = document.getElementById('match-title-input').value || 'Untitled Match';
+        const p1 = document.getElementById('p1-name').value || 'P1';
+        const p2 = document.getElementById('p2-name').value || 'P2';
+        const p3 = document.getElementById('p3-name').value || 'P3';
+        const p4 = document.getElementById('p4-name').value || 'P4';
 
-    <script>
-        const app = {
-            // Updated key to 'v3' to force a reset and ensure new features load
-            STORAGE_KEY: 'pb_active_match_v3',
-            HISTORY_KEY: 'pb_match_history_v3',
-
-            data: {
-                matchId: null,
-                title: '', 
-                date: null,
-                players: { p1: '', p2: '', p3: '', p4: '' },
-                currentGame: 1,
-                stats: { 1: [], 2: [], 3: [] },
-                rallyStats: { 1: [], 2: [], 3: [] }
-            },
-            currentRallyCount: 0,
-            
-            init: function() {
-                this.loadFromStorage();
-                
-                // If we have an active match, load it. Otherwise show setup.
-                if(this.data.matchId) {
-                    this.resumeUI();
-                } else {
-                    document.getElementById('setup-screen').classList.remove('hidden');
-                    document.getElementById('cancel-setup-btn').classList.add('hidden'); // Cannot cancel if no match exists
-                }
-            },
-
-            // --- DATA PERSISTENCE ---
-            loadFromStorage: function() {
-                const active = localStorage.getItem(this.STORAGE_KEY);
-                if (active) this.data = JSON.parse(active);
-            },
-            saveToStorage: function() {
-                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
-                
-                // Save to History
-                let history = JSON.parse(localStorage.getItem(this.HISTORY_KEY) || '[]');
-                const idx = history.findIndex(m => m.matchId === this.data.matchId);
-                if(idx > -1) history[idx] = this.data;
-                else history.unshift(this.data);
-                localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
-                
-                this.updateButtonCounts();
-                this.updateHeader();
-            },
-
-            // --- NAVIGATION & MENUS ---
-            toggleMenu: function() {
-                const menu = document.getElementById('main-menu');
-                if(menu.classList.contains('hidden')) {
-                    menu.classList.remove('hidden');
-                    this.renderMenuHistory();
-                } else {
-                    menu.classList.add('hidden');
-                }
-            },
-            setupNewMatch: function() {
-                if(confirm("Start a new match? Current match will be saved to history.")) {
-                    localStorage.removeItem(this.STORAGE_KEY); // Clear active
-                    location.reload(); // Reload to force setup screen
-                }
-            },
-            editMatchName: function() {
-                const newName = prompt("Enter new match name:", this.data.title);
-                if(newName) {
-                    this.data.title = newName;
-                    this.saveToStorage();
-                    this.toggleMenu(); // Close menu
-                }
-            },
-            renderMenuHistory: function() {
-                const history = JSON.parse(localStorage.getItem(this.HISTORY_KEY) || '[]');
-                const container = document.getElementById('menu-history-list');
-                container.innerHTML = '';
-                if(history.length === 0) {
-                    container.innerHTML = '<div class="text-center text-slate-500 text-sm">No history yet</div>';
-                    return;
-                }
-                history.forEach(match => {
-                     const div = document.createElement('div');
-                     div.className = "bg-slate-800 p-3 rounded flex justify-between items-center border border-slate-700";
-                     div.innerHTML = `
-                        <div class="overflow-hidden">
-                            <div class="text-sm font-bold text-white truncate w-40">${match.title || 'Untitled'}</div>
-                            <div class="text-xs text-slate-400">${new Date(match.date).toLocaleDateString()}</div>
-                        </div>
-                        <button class="bg-blue-600 px-3 py-1 rounded text-xs font-bold" onclick="app.loadMatch('${match.matchId}')">LOAD</button>
-                     `;
-                     container.appendChild(div);
-                });
-            },
-
-            // --- MATCH SETUP ---
-            startMatch: function() {
-                const title = document.getElementById('match-title-input').value || 'Untitled Match';
-                const p1 = document.getElementById('p1-name').value || 'P1';
-                const p2 = document.getElementById('p2-name').value || 'P2';
-                const p3 = document.getElementById('p3-name').value || 'P3';
-                const p4 = document.getElementById('p4-name').value || 'P4';
-                
-                this.data = {
-                    matchId: Date.now().toString(),
-                    title: title,
-                    date: new Date().toISOString(),
-                    players: { p1, p2, p3, p4 },
-                    currentGame: 1,
-                    stats: { 1: [], 2: [], 3: [] },
-                    rallyStats: { 1: [], 2: [], 3: [] }
-                };
-                this.saveToStorage();
-                this.resumeUI();
-            },
-            resumeUI: function() {
-                document.getElementById('setup-screen').classList.add('hidden');
-                
-                // Populate inputs for next time (in case of re-setup)
-                document.getElementById('match-title-input').value = this.data.title;
-                document.getElementById('p1-name').value = this.data.players.p1;
-                document.getElementById('p2-name').value = this.data.players.p2;
-                document.getElementById('p3-name').value = this.data.players.p3;
-                document.getElementById('p4-name').value = this.data.players.p4;
-                
-                // Allow cancelling setup if we are resuming
-                document.getElementById('cancel-setup-btn').classList.remove('hidden');
-
-                this.updateHeader();
-                this.updateLabels();
-                this.switchTab('A');
-                this.updateButtonCounts();
-                this.renderRallyDisplay();
-            },
-            updateHeader: function() {
-                const titleDisplay = this.data.title || 'PB TRACKER';
-                document.getElementById('header-match-title').innerText = titleDisplay.toUpperCase();
-                document.getElementById('header-date').innerText = new Date(this.data.date).toLocaleDateString();
-                document.getElementById('header-date').classList.remove('hidden');
-            },
-            updateLabels: function() {
-                document.getElementById('lbl-p1').innerText = this.data.players.p1;
-                document.getElementById('lbl-p2').innerText = this.data.players.p2;
-                document.getElementById('lbl-p3').innerText = this.data.players.p3;
-                document.getElementById('lbl-p4').innerText = this.data.players.p4;
-                document.getElementById('game-selector').value = this.data.currentGame;
-            },
-            closeSetup: function() {
-                 document.getElementById('setup-screen').classList.add('hidden');
-            },
-            loadMatch: function(id) {
-                const history = JSON.parse(localStorage.getItem(this.HISTORY_KEY) || '[]');
-                const match = history.find(m => m.matchId === id);
-                if(match) {
-                    this.data = match;
-                    this.saveToStorage();
-                    this.toggleMenu(); // Close menu
-                    this.resumeUI();
-                }
-            },
-            
-            // --- TABS ---
-            switchTab: function(team) {
-                const tabA = document.getElementById('tab-btn-A');
-                const tabB = document.getElementById('tab-btn-B');
-                const viewA = document.getElementById('view-A');
-                const viewB = document.getElementById('view-B');
-                if (team === 'A') {
-                    tabA.className = "flex-1 py-2 bg-slate-700 border-b-2 border-blue-500 text-blue-100 transition-colors";
-                    tabB.className = "flex-1 py-2 bg-slate-800 border-b-2 border-transparent text-slate-500 transition-colors";
-                    viewA.classList.remove('hidden'); viewB.classList.add('hidden');
-                } else {
-                    tabB.className = "flex-1 py-2 bg-slate-700 border-b-2 border-orange-500 text-orange-100 transition-colors";
-                    tabA.className = "flex-1 py-2 bg-slate-800 border-b-2 border-transparent text-slate-500 transition-colors";
-                    viewB.classList.remove('hidden'); viewA.classList.add('hidden');
-                }
-            },
-            switchGame: function(val) {
-                this.data.currentGame = parseInt(val);
-                if(!this.data.stats[this.data.currentGame]) this.data.stats[this.data.currentGame] = [];
-                if(!this.data.rallyStats[this.data.currentGame]) this.data.rallyStats[this.data.currentGame] = [];
-                this.saveToStorage();
-                this.currentRallyCount = 0; 
-                this.renderRallyDisplay();
-                this.updateButtonCounts(); 
-            },
-
-            // --- GAME STATS ---
-            addStat: function(player, type) {
-                if(!this.data.stats[this.data.currentGame]) this.data.stats[this.data.currentGame] = [];
-                this.data.stats[this.data.currentGame].push({ player, type, timestamp: Date.now() });
-                this.saveToStorage();
-            },
-            undoLast: function() {
-                const g = this.data.currentGame;
-                if (this.data.stats[g] && this.data.stats[g].length > 0) {
-                    this.data.stats[g].pop();
-                    this.saveToStorage();
-                } else {
-                    alert("No stats to undo in this game.");
-                }
-            },
-            updateButtonCounts: function() {
-                const currentStats = this.data.stats[this.data.currentGame] || [];
-                const counts = {};
-                currentStats.forEach(s => {
-                    const key = `${s.player}-${s.type}`;
-                    counts[key] = (counts[key] || 0) + 1;
-                });
-                document.querySelectorAll('.stat-btn').forEach(btn => {
-                    const p = btn.getAttribute('data-p');
-                    const t = btn.getAttribute('data-t');
-                    const countSpan = btn.querySelector('.stat-count');
-                    const val = counts[`${p}-${t}`] || 0;
-                    if(countSpan) countSpan.innerText = val;
-                });
-            },
-
-            // --- RALLY LOGIC ---
-            rallyTap: function() {
-                this.currentRallyCount++;
-                this.renderRallyDisplay();
-            },
-            rallySave: function() {
-                if(this.currentRallyCount === 0) return;
-                if(!this.data.rallyStats[this.data.currentGame]) this.data.rallyStats[this.data.currentGame] = [];
-                this.data.rallyStats[this.data.currentGame].push(this.currentRallyCount);
-                this.currentRallyCount = 0;
-                this.renderRallyDisplay();
-                this.saveToStorage();
-            },
-            renderRallyDisplay: function() {
-                document.getElementById('rally-display').innerText = this.currentRallyCount;
-            },
-
-            // --- ANALYTICS & SHARING ---
-            showStats: function() {
-                document.getElementById('stats-modal').classList.remove('hidden');
-                this.renderStatsText();
-                this.renderChart();
-                this.renderRallyStats();
-            },
-            closeStats: function() {
-                document.getElementById('stats-modal').classList.add('hidden');
-            },
-            calculateStats: function(gameId) {
-                const logs = this.data.stats[gameId] || [];
-                const totals = { teamA: { errors: 0, winners: 0, details: {} }, teamB: { errors: 0, winners: 0, details: {} } };
-                const errorTypes = ['err_serve', 'err_return', 'err_net', 'err_wide', 'err_long', 'err_high'];
-
-                logs.forEach(log => {
-                    const isTeamA = (log.player === 'p1' || log.player === 'p2');
-                    const target = isTeamA ? totals.teamA : totals.teamB;
-                    if (!target.details[log.type]) target.details[log.type] = 0;
-                    target.details[log.type]++;
-                    if (errorTypes.includes(log.type)) target.errors++;
-                    if (log.type === 'winner') target.winners++;
-                });
-                return totals;
-            },
-            renderRallyStats: function() {
-                const rallies = this.data.rallyStats[this.data.currentGame] || [];
-                const avg = rallies.length ? (rallies.reduce((a,b)=>a+b, 0) / rallies.length).toFixed(1) : 0;
-                const max = rallies.length ? Math.max(...rallies) : 0;
-                document.getElementById('stat-avg-rally').innerText = avg;
-                document.getElementById('stat-max-rally').innerText = max;
-                document.getElementById('stat-total-points').innerText = rallies.length;
-                
-                const logContainer = document.getElementById('rally-log');
-                if(!rallies.length) logContainer.innerHTML = 'No rallies.';
-                else logContainer.innerHTML = rallies.map((r, i) => `Pt${i+1}: <span class="text-white font-bold">${r}</span>`).join(' | ');
-            },
-            renderStatsText: function() {
-                const totals = this.calculateStats(this.data.currentGame);
-                document.getElementById('stats-text-container').innerHTML = `
-                    <div class="grid grid-cols-2 gap-4 border-b border-slate-600 pb-2 mb-2 text-center">
-                        <div><h4 class="text-blue-400 font-bold">TEAM A</h4><div class="text-2xl font-bold">${totals.teamA.errors}</div><div class="text-xs text-slate-400">Errors</div></div>
-                        <div><h4 class="text-orange-400 font-bold">TEAM B</h4><div class="text-2xl font-bold">${totals.teamB.errors}</div><div class="text-xs text-slate-400">Errors</div></div>
-                    </div>`;
-            },
-            renderChart: function() {
-                const ctx = document.getElementById('errorChart').getContext('2d');
-                const totals = this.calculateStats(this.data.currentGame);
-                const cats = ['err_serve', 'err_return', 'err_net', 'err_wide', 'err_long', 'err_high'];
-                const labels = ['Srv', 'Ret', 'Net', 'Wide', 'Long', 'High'];
-                if(window.myChart) window.myChart.destroy();
-                window.myChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            { label: 'Team A', data: cats.map(c => totals.teamA.details[c] || 0), backgroundColor: '#60a5fa' },
-                            { label: 'Team B', data: cats.map(c => totals.teamB.details[c] || 0), backgroundColor: '#fb923c' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } }, plugins: { legend: { labels: { color: 'white' } } } }
-                });
-            },
-            shareStats: function() {
-                const g = this.data.currentGame;
-                const t = this.calculateStats(g);
-                const title = this.data.title || 'Match';
-                let text = `🥒 ${title.toUpperCase()} (Game ${g})\n\n`;
-                text += `TEAM A (${this.data.players.p1}/${this.data.players.p2}): ${t.teamA.errors} Err / ${t.teamA.winners} Win\n`;
-                text += `TEAM B (${this.data.players.p3}/${this.data.players.p4}): ${t.teamB.errors} Err / ${t.teamB.winners} Win\n`;
-                if (navigator.share) navigator.share({ title: 'Pickleball Stats', text: text });
-                else { navigator.clipboard.writeText(text); alert("Summary copied!"); }
-            }
+        this.data = {
+          matchId: Date.now().toString(),
+          title: title,
+          date: new Date().toISOString(),
+          players: { p1, p2, p3, p4 },
+          currentGame: 1,
+          stats: { 1: [], 2: [], 3: [] },
+          rallyStats: { 1: [], 2: [], 3: [] }
         };
+        this.saveToStorage();
+        this.resumeUI();
+      },
+      resumeUI: function () {
+        document.getElementById('setup-screen').classList.add('hidden');
 
-        window.onload = function() { app.init(); };
-    </script>
+        document.getElementById('match-title-input').value = this.data.title;
+        document.getElementById('p1-name').value = this.data.players.p1;
+        document.getElementById('p2-name').value = this.data.players.p2;
+        document.getElementById('p3-name').value = this.data.players.p3;
+        document.getElementById('p4-name').value = this.data.players.p4;
+
+        document.getElementById('cancel-setup-btn').classList.remove('hidden');
+
+        this.updateHeader();
+        this.updateLabels();
+        this.updateButtonCounts();
+        this.renderRallyDisplay();
+      },
+      updateHeader: function () {
+        const titleDisplay = this.data.title || 'PB TRACKER';
+        document.getElementById('header-match-title').innerText = titleDisplay.toUpperCase();
+        document.getElementById('header-date').innerText = new Date(this.data.date).toLocaleDateString();
+        document.getElementById('header-date').classList.remove('hidden');
+      },
+      updateLabels: function () {
+        document.getElementById('lbl-p1').innerText = this.data.players.p1;
+        document.getElementById('lbl-p2').innerText = this.data.players.p2;
+        document.getElementById('lbl-p3').innerText = this.data.players.p3;
+        document.getElementById('lbl-p4').innerText = this.data.players.p4;
+        document.getElementById('game-selector').value = this.data.currentGame;
+      },
+      closeSetup: function () {
+        document.getElementById('setup-screen').classList.add('hidden');
+      },
+      loadMatch: function (id) {
+        const history = JSON.parse(localStorage.getItem(this.HISTORY_KEY) || '[]');
+        const match = history.find(m => m.matchId === id);
+        if (match) {
+          this.data = match;
+          this.saveToStorage();
+          this.toggleMenu();
+          this.resumeUI();
+        }
+      },
+
+      // --- GAMES ---
+      switchGame: function (val) {
+        this.data.currentGame = parseInt(val);
+        if (!this.data.stats[this.data.currentGame]) this.data.stats[this.data.currentGame] = [];
+        if (!this.data.rallyStats[this.data.currentGame]) this.data.rallyStats[this.data.currentGame] = [];
+        this.saveToStorage();
+        this.currentRallyCount = 0;
+        this.renderRallyDisplay();
+        this.updateButtonCounts();
+      },
+
+      // --- GAME STATS ---
+      addStat: function (player, type) {
+        if (!this.data.stats[this.data.currentGame]) this.data.stats[this.data.currentGame] = [];
+        this.data.stats[this.data.currentGame].push({ player, type, timestamp: Date.now() });
+        this.saveToStorage();
+      },
+      undoLast: function () {
+        const g = this.data.currentGame;
+        if (this.data.stats[g] && this.data.stats[g].length > 0) {
+          this.data.stats[g].pop();
+          this.saveToStorage();
+        } else {
+          alert("No stats to undo in this game.");
+        }
+      },
+      updateButtonCounts: function () {
+        const currentStats = this.data.stats[this.data.currentGame] || [];
+        const counts = {};
+        currentStats.forEach(s => {
+          const key = `${s.player}-${s.type}`;
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        document.querySelectorAll('.stat-btn').forEach(btn => {
+          const p = btn.getAttribute('data-p');
+          const t = btn.getAttribute('data-t');
+          const countSpan = btn.querySelector('.stat-count');
+          const val = counts[`${p}-${t}`] || 0;
+          if (countSpan) countSpan.innerText = val;
+        });
+      },
+
+      // --- RALLY LOGIC ---
+      rallyTap: function () {
+        this.currentRallyCount++;
+        this.renderRallyDisplay();
+      },
+      rallySave: function () {
+        if (this.currentRallyCount === 0) return;
+        if (!this.data.rallyStats[this.data.currentGame]) this.data.rallyStats[this.data.currentGame] = [];
+        this.data.rallyStats[this.data.currentGame].push(this.currentRallyCount);
+        this.currentRallyCount = 0;
+        this.renderRallyDisplay();
+        this.saveToStorage();
+      },
+      renderRallyDisplay: function () {
+        document.getElementById('rally-display').innerText = this.currentRallyCount;
+      },
+
+      // --- ANALYTICS & SHARING ---
+      showStats: function () {
+        document.getElementById('stats-modal').classList.remove('hidden');
+        this.renderStatsText();
+        this.renderChart();
+        this.renderRallyStats();
+      },
+      closeStats: function () {
+        document.getElementById('stats-modal').classList.add('hidden');
+      },
+      calculateStats: function (gameId) {
+        const logs = this.data.stats[gameId] || [];
+        const totals = { teamA: { errors: 0, winners: 0, details: {} }, teamB: { errors: 0, winners: 0, details: {} } };
+        const errorTypes = ['err_serve', 'err_return', 'err_net', 'err_wide', 'err_long', 'err_high'];
+
+        logs.forEach(log => {
+          const isTeamA = (log.player === 'p1' || log.player === 'p2');
+          const target = isTeamA ? totals.teamA : totals.teamB;
+          if (!target.details[log.type]) target.details[log.type] = 0;
+          target.details[log.type]++;
+          if (errorTypes.includes(log.type)) target.errors++;
+          if (log.type === 'winner') target.winners++;
+        });
+        return totals;
+      },
+      renderRallyStats: function () {
+        const rallies = this.data.rallyStats[this.data.currentGame] || [];
+        const avg = rallies.length ? (rallies.reduce((a, b) => a + b, 0) / rallies.length).toFixed(1) : 0;
+        const max = rallies.length ? Math.max(...rallies) : 0;
+        document.getElementById('stat-avg-rally').innerText = avg;
+        document.getElementById('stat-max-rally').innerText = max;
+        document.getElementById('stat-total-points').innerText = rallies.length;
+
+        const logContainer = document.getElementById('rally-log');
+        if (!rallies.length) logContainer.innerHTML = 'No rallies.';
+        else logContainer.innerHTML = rallies.map((r, i) => `Pt${i + 1}: <span class="text-white font-bold">${r}</span>`).join(' | ');
+      },
+      renderStatsText: function () {
+        const totals = this.calculateStats(this.data.currentGame);
+        document.getElementById('stats-text-container').innerHTML = `
+          <div class="grid grid-cols-2 gap-4 border-b border-slate-600 pb-2 mb-2 text-center">
+            <div>
+              <h4 class="text-blue-400 font-bold">TEAM A</h4>
+              <div class="text-2xl font-bold">${totals.teamA.errors}</div>
+              <div class="text-xs text-slate-400">Errors</div>
+            </div>
+            <div>
+              <h4 class="text-orange-400 font-bold">TEAM B</h4>
+              <div class="text-2xl font-bold">${totals.teamB.errors}</div>
+              <div class="text-xs text-slate-400">Errors</div>
+            </div>
+          </div>`;
+      },
+      renderChart: function () {
+        const ctx = document.getElementById('errorChart').getContext('2d');
+        const totals = this.calculateStats(this.data.currentGame);
+        const cats = ['err_serve', 'err_return', 'err_net', 'err_wide', 'err_long', 'err_high'];
+        const labels = ['Srv', 'Ret', 'Net', 'Wide', 'Long', 'High'];
+        if (window.myChart) window.myChart.destroy();
+        window.myChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Team A', data: cats.map(c => totals.teamA.details[c] || 0), backgroundColor: '#60a5fa' },
+              { label: 'Team B', data: cats.map(c => totals.teamB.details[c] || 0), backgroundColor: '#fb923c' }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, ticks: { color: 'white' } },
+              x: { ticks: { color: 'white' } }
+            },
+            plugins: { legend: { labels: { color: 'white' } } }
+          }
+        });
+      },
+      shareStats: function () {
+        const g = this.data.currentGame;
+        const t = this.calculateStats(g);
+        const title = this.data.title || 'Match';
+        let text = `🥒 ${title.toUpperCase()} (Game ${g})\n\n`;
+        text += `TEAM A (${this.data.players.p1}/${this.data.players.p2}): ${t.teamA.errors} Err / ${t.teamA.winners} Win\n`;
+        text += `TEAM B (${this.data.players.p3}/${this.data.players.p4}): ${t.teamB.errors} Err / ${t.teamB.winners} Win\n`;
+        if (navigator.share) navigator.share({ title: 'Pickleball Stats', text: text });
+        else { navigator.clipboard.writeText(text); alert("Summary copied!"); }
+      }
+    };
+
+    window.onload = function () { app.init(); };
+  </script>
 </body>
 </html>
